@@ -9,14 +9,10 @@ ENV FC_LANG en-US
 ENV LC_CTYPE en_US.UTF-8
 
 # Specify version here or on docker build line
-ARG METABASE_VERSION=v0.31.1
-
-# Specify PR ids to pull and apply to source code
-ARG METABASE_PULLS=9022
+ARG METABASE_VERSION=v0.31.2
 
 ADD https://raw.github.com/technomancy/leiningen/stable/bin/lein /usr/local/bin/lein
 ADD https://s3.amazonaws.com/rds-downloads/rds-combined-ca-bundle.pem /tmp/rds-combined-ca-bundle.pem
-ADD apply-pulls /app/source/
 
 # Install software, add all AWS/RDS certificates
 RUN apk add --update --no-cache wget bash curl patch java-cacerts ttf-dejavu fontconfig git make gettext bash yarn && \
@@ -31,7 +27,6 @@ RUN apk add --update --no-cache wget bash curl patch java-cacerts ttf-dejavu fon
 RUN git clone --branch $METABASE_VERSION --depth 1 https://github.com/metabase/metabase && \
     cd metabase && \
     git checkout tags/$METABASE_VERSION && \
-    /app/source/apply-pulls && \
     lein deps && \
     yarn && \
     bin/build && \
@@ -43,15 +38,16 @@ ENV JAVA_HOME=/usr/lib/jvm/default-jvm
 ENV PATH /usr/local/bin:$PATH
 ENV FC_LANG en-US
 ENV LC_CTYPE en_US.UTF-8
+ENV MB_JETTY_PORT=10000
 
 COPY --from=builder /etc/ssl/certs/java/cacerts /usr/lib/jvm/default-jvm/jre/lib/security/cacerts
 
 RUN apk add --update --no-cache bash && \
     mkdir -p bin target/uberjar
-    
+
 COPY --from=builder /app/source/metabase/target/uberjar/metabase.jar /app/target/uberjar/
 COPY --from=builder /app/source/metabase/bin/start /app/bin/
 
-EXPOSE 3000
+EXPOSE 10000
 
 ENTRYPOINT ["/app/bin/start"]
